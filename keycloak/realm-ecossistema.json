@@ -1,0 +1,248 @@
+{
+  "realm": "ecossistema",
+  "enabled": true,
+  "displayName": "Ecossistema Digital — Embaixada de Angola",
+  "defaultLocale": "pt",
+  "internationalizationEnabled": true,
+  "supportedLocales": ["pt", "de", "en", "cs"],
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "sslRequired": "none",
+  "smtpServer": {
+    "host": "mailhog",
+    "port": "1025",
+    "from": "noreply@ecossistema.local",
+    "fromDisplayName": "Ecossistema Digital",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "ADMIN",
+        "description": "Administrador geral do sistema"
+      },
+      {
+        "name": "CONSUL",
+        "description": "Cônsul — acesso total a operações consulares"
+      },
+      {
+        "name": "OFFICER",
+        "description": "Funcionário consular — operações do dia-a-dia"
+      },
+      {
+        "name": "CITIZEN",
+        "description": "Cidadão — acesso aos seus próprios processos"
+      },
+      {
+        "name": "EDITOR",
+        "description": "Editor de conteúdo — site e notícias"
+      },
+      {
+        "name": "VIEWER",
+        "description": "Visualizador — acesso somente leitura"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "sgc-frontend",
+      "name": "SGC Frontend",
+      "description": "Sistema de Gestão Consular — Frontend SPA",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "rootUrl": "http://localhost:3001",
+      "baseUrl": "/",
+      "redirectUris": ["http://localhost:3001/*"],
+      "webOrigins": ["http://localhost:3001"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "sgc-backend",
+      "name": "SGC Backend",
+      "description": "Sistema de Gestão Consular — Backend API",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false
+    },
+    {
+      "clientId": "si-frontend",
+      "name": "SI Frontend",
+      "description": "Site Institucional — Frontend SPA",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "rootUrl": "http://localhost:3002",
+      "baseUrl": "/",
+      "redirectUris": ["http://localhost:3002/*"],
+      "webOrigins": ["http://localhost:3002"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "si-backend",
+      "name": "SI Backend",
+      "description": "Site Institucional — Backend API",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false
+    },
+    {
+      "clientId": "wn-frontend",
+      "name": "WN Frontend",
+      "description": "WebNotícias — Frontend SPA",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "rootUrl": "http://localhost:3003",
+      "baseUrl": "/",
+      "redirectUris": ["http://localhost:3003/*"],
+      "webOrigins": ["http://localhost:3003"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "wn-backend",
+      "name": "WN Backend",
+      "description": "WebNotícias — Backend API",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false
+    },
+    {
+      "clientId": "gpj-frontend",
+      "name": "GPJ Frontend",
+      "description": "Gestão de Projetos — Frontend SPA",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "rootUrl": "http://localhost:3004",
+      "baseUrl": "/",
+      "redirectUris": ["http://localhost:3004/*"],
+      "webOrigins": ["http://localhost:3004"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    },
+    {
+      "clientId": "gpj-backend",
+      "name": "GPJ Backend",
+      "description": "Gestão de Projetos — Backend API",
+      "enabled": true,
+      "bearerOnly": true,
+      "publicClient": false
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "email": "admin@ecossistema.local",
+      "firstName": "Admin",
+      "lastName": "Sistema",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ADMIN"]
+    },
+    {
+      "username": "consul",
+      "email": "consul@ecossistema.local",
+      "firstName": "Maria",
+      "lastName": "Consul",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "consul123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["CONSUL"]
+    },
+    {
+      "username": "officer",
+      "email": "officer@ecossistema.local",
+      "firstName": "João",
+      "lastName": "Officer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "officer123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["OFFICER"]
+    },
+    {
+      "username": "citizen",
+      "email": "citizen@ecossistema.local",
+      "firstName": "Ana",
+      "lastName": "Cidadã",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "citizen123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["CITIZEN"]
+    },
+    {
+      "username": "editor",
+      "email": "editor@ecossistema.local",
+      "firstName": "Pedro",
+      "lastName": "Editor",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "editor123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["EDITOR"]
+    },
+    {
+      "username": "viewer",
+      "email": "viewer@ecossistema.local",
+      "firstName": "Sofia",
+      "lastName": "Viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "viewer123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["VIEWER"]
+    }
+  ]
+}

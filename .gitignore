@@ -1,0 +1,24 @@
+# Environment (keep .env.example, ignore actual .env)
+.env
+
+# Docker volumes data
+data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temp
+tmp/
+temp/
