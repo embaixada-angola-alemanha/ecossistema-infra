@@ -125,6 +125,29 @@ services:
       - ecossistema-net
 
   # ---------------------------------------------------------------------------
+  # RabbitMQ (Message Broker)
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: ecossistema-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "${RABBITMQ_AMQP_PORT}:5672"
+      - "${RABBITMQ_MGMT_PORT}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
   # Nginx (Reverse Proxy)
   # ---------------------------------------------------------------------------
   nginx:
@@ -159,6 +182,8 @@ volumes:
   redis_data:
     driver: local
   minio_data:
+    driver: local
+  rabbitmq_data:
     driver: local
 
 # =============================================================================
