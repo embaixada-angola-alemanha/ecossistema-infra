@@ -9,6 +9,7 @@
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "bruteForceProtected": true,
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notUsername and passwordHistory(3)",
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "sslRequired": "none",
@@ -46,6 +47,18 @@
       {
         "name": "VIEWER",
         "description": "Visualizador — acesso somente leitura"
+      },
+      {
+        "name": "GOP-ADMIN",
+        "description": "GOP — administrador com acesso total ao monitoramento de operações"
+      },
+      {
+        "name": "GOP-OPERATOR",
+        "description": "GOP — operador: gere incidentes, deploys e manutenção"
+      },
+      {
+        "name": "GOP-VIEWER",
+        "description": "GOP — acesso somente leitura ao monitoramento"
       }
     ]
   },
@@ -57,7 +70,7 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:3001",
       "baseUrl": "/",
       "redirectUris": ["http://localhost:3001/*"],
@@ -81,7 +94,7 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:3002",
       "baseUrl": "/",
       "redirectUris": ["http://localhost:3002/*"],
@@ -105,7 +118,7 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:3003",
       "baseUrl": "/",
       "redirectUris": ["http://localhost:3003/*"],
@@ -124,12 +137,12 @@
     },
     {
       "clientId": "gpj-frontend",
-      "name": "GPJ Frontend",
-      "description": "Gestão de Projetos — Frontend SPA",
+      "name": "GOP Frontend",
+      "description": "Gestão de Operações — Frontend SPA",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:4200",
       "baseUrl": "/",
       "redirectUris": ["http://localhost:4200/*", "http://localhost:3004/*"],
@@ -140,8 +153,8 @@
     },
     {
       "clientId": "gpj-backend",
-      "name": "GPJ Backend",
-      "description": "Gestão de Projetos — Backend API",
+      "name": "GOP Backend",
+      "description": "Gestão de Operações — Backend API",
       "enabled": true,
       "bearerOnly": true,
       "publicClient": false
@@ -162,7 +175,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ADMIN"]
+      "realmRoles": ["ADMIN", "GOP-ADMIN"]
     },
     {
       "username": "consul",

@@ -1,0 +1,555 @@
+{
+  "uid": "eco-jvm-metrics",
+  "title": "Ecossistema — JVM Metrics",
+  "description": "JVM performance monitoring for Ecossistema Digital Spring Boot backends: heap memory, garbage collection, threads, and class loading.",
+  "tags": ["ecossistema", "jvm", "spring-boot", "micrometer"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "env",
+        "type": "custom",
+        "label": "Environment",
+        "current": {
+          "selected": true,
+          "text": "staging",
+          "value": "staging"
+        },
+        "options": [
+          { "selected": true, "text": "staging", "value": "staging" },
+          { "selected": false, "text": "production", "value": "production" }
+        ],
+        "query": "staging,production",
+        "hide": 0
+      },
+      {
+        "name": "service",
+        "type": "custom",
+        "label": "Service",
+        "current": {
+          "selected": true,
+          "text": "sgc-backend",
+          "value": "sgc-backend"
+        },
+        "options": [
+          { "selected": true, "text": "sgc-backend", "value": "sgc-backend" },
+          { "selected": false, "text": "si-backend", "value": "si-backend" },
+          { "selected": false, "text": "wn-backend", "value": "wn-backend" },
+          { "selected": false, "text": "gpj-backend", "value": "gpj-backend" }
+        ],
+        "query": "sgc-backend,si-backend,wn-backend,gpj-backend",
+        "includeAll": false,
+        "multi": false,
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "JVM Summary",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "panels": []
+    },
+    {
+      "id": 1,
+      "type": "gauge",
+      "title": "Heap Memory Usage",
+      "description": "Current heap memory used as a percentage of the maximum heap size",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(jvm_memory_used_bytes{service=\"$service\", env=\"$env\", area=\"heap\"}) / sum(jvm_memory_max_bytes{service=\"$service\", env=\"$env\", area=\"heap\"}) * 100",
+          "legendFormat": "Heap %",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "orange", "value": 80 },
+              { "color": "red", "value": 90 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Live Threads",
+      "description": "Current number of live (daemon + non-daemon) threads in the JVM",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "jvm_threads_live_threads{service=\"$service\", env=\"$env\"}",
+          "legendFormat": "Live Threads",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "orange", "value": 200 },
+              { "color": "red", "value": 500 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "N/A"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "wideLayout": true,
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Loaded Classes",
+      "description": "Number of classes currently loaded in the JVM",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "jvm_classes_loaded_classes{service=\"$service\", env=\"$env\"}",
+          "legendFormat": "Loaded Classes",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "green", "value": 5000 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "N/A"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "wideLayout": true,
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Heap Memory Over Time",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "id": 101,
+      "panels": []
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Heap Memory — Used vs Max",
+      "description": "Heap memory usage over time compared with the maximum allocated heap",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(jvm_memory_used_bytes{service=\"$service\", env=\"$env\", area=\"heap\"}) by (service)",
+          "legendFormat": "Used"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(jvm_memory_committed_bytes{service=\"$service\", env=\"$env\", area=\"heap\"}) by (service)",
+          "legendFormat": "Committed"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(jvm_memory_max_bytes{service=\"$service\", env=\"$env\", area=\"heap\"}) by (service)",
+          "legendFormat": "Max"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": { "mode": "none", "group": "A" },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": { "type": "linear" },
+            "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Max" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Committed" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [5, 5] } },
+              { "id": "custom.fillOpacity", "value": 0 },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Used" },
+            "properties": [
+              { "id": "custom.fillOpacity", "value": 20 },
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Garbage Collection",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+      "id": 102,
+      "panels": []
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "GC Pause Time (rate)",
+      "description": "Rate of time spent in garbage collection pauses, broken down by GC action and cause",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(jvm_gc_pause_seconds_sum{service=\"$service\", env=\"$env\"}[5m])",
+          "legendFormat": "{{action}} — {{cause}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": { "mode": "normal", "group": "A" },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": { "type": "linear" },
+            "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "GC Pause Count (rate)",
+      "description": "Rate of garbage collection pause events per second",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(jvm_gc_pause_seconds_count{service=\"$service\", env=\"$env\"}[5m])",
+          "legendFormat": "{{action}} — {{cause}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "fillOpacity": 60,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": { "mode": "normal", "group": "A" },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": { "type": "linear" },
+            "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean", "max"] }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Threads",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "id": 103,
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Thread Count Over Time",
+      "description": "Live, daemon, and peak thread counts over time",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "jvm_threads_live_threads{service=\"$service\", env=\"$env\"}",
+          "legendFormat": "Live Threads"
+        },
+        {
+          "refId": "B",
+          "expr": "jvm_threads_daemon_threads{service=\"$service\", env=\"$env\"}",
+          "legendFormat": "Daemon Threads"
+        },
+        {
+          "refId": "C",
+          "expr": "jvm_threads_peak_threads{service=\"$service\", env=\"$env\"}",
+          "legendFormat": "Peak Threads"
+        },
+        {
+          "refId": "D",
+          "expr": "jvm_threads_states_threads{service=\"$service\", env=\"$env\", state=\"blocked\"}",
+          "legendFormat": "Blocked Threads"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": { "mode": "none", "group": "A" },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": { "type": "linear" },
+            "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Peak Threads" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } },
+              { "id": "custom.fillOpacity", "value": 0 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Blocked Threads" },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } },
+              { "id": "custom.fillOpacity", "value": 30 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Non-Heap Memory",
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 34 },
+      "id": 104,
+      "panels": [
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Non-Heap Memory (Metaspace, Code Cache, etc.)",
+          "description": "Non-heap memory pool usage over time — includes Metaspace, Compressed Class Space, and Code Cache",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 35 },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "jvm_memory_used_bytes{service=\"$service\", env=\"$env\", area=\"nonheap\"}",
+              "legendFormat": "{{id}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "fillOpacity": 15,
+                "gradientMode": "scheme",
+                "spanNulls": false,
+                "showPoints": "never",
+                "pointSize": 5,
+                "stacking": { "mode": "normal", "group": "A" },
+                "axisPlacement": "auto",
+                "axisLabel": "",
+                "scaleDistribution": { "type": "linear" },
+                "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+                "thresholdsStyle": { "mode": "off" }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }
+          }
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Service Overview",
+      "url": "/d/eco-service-overview/ecossistema-service-overview",
+      "type": "link",
+      "icon": "apps",
+      "tooltip": "Jump to Service Overview dashboard"
+    },
+    {
+      "title": "HTTP Metrics",
+      "url": "/d/eco-http-metrics/ecossistema-http-metrics",
+      "type": "link",
+      "icon": "external-link",
+      "tooltip": "Jump to HTTP Metrics dashboard"
+    }
+  ]
+}

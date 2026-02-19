@@ -1,0 +1,740 @@
+{
+  "uid": "eco-http-metrics",
+  "title": "Ecossistema — HTTP Metrics",
+  "description": "Detailed HTTP request analysis for Ecossistema Digital backends: request rates, response times, error percentages, and slowest endpoints.",
+  "tags": ["ecossistema", "http", "spring-boot", "micrometer"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "fiscalYearStartMonth": 0,
+  "liveNow": false,
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "name": "env",
+        "type": "custom",
+        "label": "Environment",
+        "current": {
+          "selected": true,
+          "text": "staging",
+          "value": "staging"
+        },
+        "options": [
+          { "selected": true, "text": "staging", "value": "staging" },
+          { "selected": false, "text": "production", "value": "production" }
+        ],
+        "query": "staging,production",
+        "hide": 0
+      },
+      {
+        "name": "service",
+        "type": "custom",
+        "label": "Service",
+        "current": {
+          "selected": true,
+          "text": "sgc-backend",
+          "value": "sgc-backend"
+        },
+        "options": [
+          { "selected": true, "text": "sgc-backend", "value": "sgc-backend" },
+          { "selected": false, "text": "si-backend", "value": "si-backend" },
+          { "selected": false, "text": "wn-backend", "value": "wn-backend" },
+          { "selected": false, "text": "gpj-backend", "value": "gpj-backend" }
+        ],
+        "query": "sgc-backend,si-backend,wn-backend,gpj-backend",
+        "includeAll": false,
+        "multi": false,
+        "hide": 0
+      },
+      {
+        "name": "method",
+        "type": "custom",
+        "label": "HTTP Method",
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [
+          { "selected": true, "text": "All", "value": "$__all" },
+          { "selected": false, "text": "GET", "value": "GET" },
+          { "selected": false, "text": "POST", "value": "POST" },
+          { "selected": false, "text": "PUT", "value": "PUT" },
+          { "selected": false, "text": "DELETE", "value": "DELETE" },
+          { "selected": false, "text": "PATCH", "value": "PATCH" }
+        ],
+        "query": "GET,POST,PUT,DELETE,PATCH",
+        "includeAll": true,
+        "multi": true,
+        "hide": 0
+      }
+    ]
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "HTTP Summary",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "panels": []
+    },
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Requests / min",
+      "description": "Total HTTP requests per minute across all endpoints",
+      "gridPos": { "h": 5, "w": 8, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_count{service=\"$service\", env=\"$env\", method=~\"$method\"}[5m])) * 60",
+          "legendFormat": "req/min",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "rpm",
+          "decimals": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null },
+              { "color": "green", "value": 10 },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 2000 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Avg Response Time",
+      "description": "Average HTTP response time across all endpoints (5m window)",
+      "gridPos": { "h": 5, "w": 8, "x": 8, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(http_server_requests_seconds_sum{service=\"$service\", env=\"$env\", method=~\"$method\"}[5m])) / sum(rate(http_server_requests_seconds_count{service=\"$service\", env=\"$env\", method=~\"$method\"}[5m]))",
+          "legendFormat": "avg",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 3 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "N/A"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Error Percentage (5xx)",
+      "description": "Percentage of requests returning HTTP 5xx status codes",
+      "gridPos": { "h": 5, "w": 8, "x": 16, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum(rate(http_server_requests_seconds_count{service=\"$service\", env=\"$env\", method=~\"$method\", status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{service=\"$service\", env=\"$env\", method=~\"$method\"}[5m]))) * 100 or vector(0)",
+          "legendFormat": "error %",
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "noValue": "0%"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "value_and_name",
+        "wideLayout": true,
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "type": "row",
+      "title": "Request Rate by Endpoint",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "id": 101,
+      "panels": []
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Request Rate by Endpoint (Top 10)",
+      "description": "HTTP request rate broken down by URI, showing the top 10 busiest endpoints",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 7 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (uri) (rate(http_server_requests_seconds_count{service=\"$service\", env=\"$env\", method=~\"$method\", uri!~\"/actuator.*\"}[5m])))",
+          "legendFormat": "{{uri}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": { "mode": "none", "group": "A" },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": { "type": "linear" },
+            "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["mean", "max", "lastNotNull"] }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Response Time by Status Code",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+      "id": 102,
+      "panels": []
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Avg Response Time by Status Code",
+      "description": "Average response time per HTTP status code over time",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (rate(http_server_requests_seconds_sum{service=\"$service\", env=\"$env\", method=~\"$method\"}[5m])) / sum by (status) (rate(http_server_requests_seconds_count{service=\"$service\", env=\"$env\", method=~\"$method\"}[5m]))",
+          "legendFormat": "HTTP {{status}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": { "mode": "none", "group": "A" },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": { "type": "linear" },
+            "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Request Rate by Status Code",
+      "description": "Request rate grouped by HTTP status code — useful for spotting error spikes",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (rate(http_server_requests_seconds_count{service=\"$service\", env=\"$env\", method=~\"$method\"}[5m]))",
+          "legendFormat": "HTTP {{status}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "bars",
+            "lineInterpolation": "smooth",
+            "lineWidth": 1,
+            "fillOpacity": 50,
+            "gradientMode": "scheme",
+            "spanNulls": false,
+            "showPoints": "never",
+            "pointSize": 5,
+            "stacking": { "mode": "normal", "group": "A" },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "scaleDistribution": { "type": "linear" },
+            "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byRegexp", "options": "HTTP 2.." },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "HTTP 4.." },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byRegexp", "options": "HTTP 5.." },
+            "properties": [
+              { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
+      }
+    },
+    {
+      "type": "row",
+      "title": "Slowest Endpoints",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 25 },
+      "id": 103,
+      "panels": []
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Slowest Endpoints (Avg Response Time)",
+      "description": "Table showing all endpoints sorted by average response time, with request count and error rate for context",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 26 },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "targets": [
+        {
+          "refId": "avg_time",
+          "expr": "topk(20, sum by (method, uri) (rate(http_server_requests_seconds_sum{service=\"$service\", env=\"$env\", method=~\"$method\", uri!~\"/actuator.*\"}[5m])) / sum by (method, uri) (rate(http_server_requests_seconds_count{service=\"$service\", env=\"$env\", method=~\"$method\", uri!~\"/actuator.*\"}[5m])))",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "req_rate",
+          "expr": "topk(20, sum by (method, uri) (rate(http_server_requests_seconds_count{service=\"$service\", env=\"$env\", method=~\"$method\", uri!~\"/actuator.*\"}[5m])))",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "max_time",
+          "expr": "topk(20, sum by (method, uri) (rate(http_server_requests_seconds_max{service=\"$service\", env=\"$env\", method=~\"$method\", uri!~\"/actuator.*\"}[5m])))",
+          "legendFormat": "",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "env": true,
+              "instance": true,
+              "job": true,
+              "service": true,
+              "system": true
+            },
+            "renameByName": {
+              "method": "Method",
+              "uri": "Endpoint",
+              "Value #avg_time": "Avg Response Time (s)",
+              "Value #req_rate": "Request Rate (req/s)",
+              "Value #max_time": "Max Response Time (s)"
+            },
+            "indexByName": {
+              "method": 0,
+              "uri": 1,
+              "Value #avg_time": 2,
+              "Value #max_time": 3,
+              "Value #req_rate": 4
+            }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              { "field": "Avg Response Time (s)", "desc": true }
+            ]
+          }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": { "type": "auto" },
+            "inspect": false,
+            "filterable": true
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Avg Response Time (s)" },
+            "properties": [
+              { "id": "unit", "value": "s" },
+              { "id": "decimals", "value": 4 },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 0.1 },
+                    { "color": "orange", "value": 0.5 },
+                    { "color": "red", "value": 1 }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Max Response Time (s)" },
+            "properties": [
+              { "id": "unit", "value": "s" },
+              { "id": "decimals", "value": 4 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Request Rate (req/s)" },
+            "properties": [
+              { "id": "unit", "value": "reqps" },
+              { "id": "decimals", "value": 3 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Method" },
+            "properties": [
+              { "id": "custom.width", "value": 80 }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Endpoint" },
+            "properties": [
+              { "id": "custom.width", "value": 400 }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false,
+          "reducer": ["sum"],
+          "countRows": false,
+          "fields": ""
+        },
+        "sortBy": [
+          { "displayName": "Avg Response Time (s)", "desc": true }
+        ]
+      }
+    },
+    {
+      "type": "row",
+      "title": "Request Duration Distribution",
+      "collapsed": true,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
+      "id": 104,
+      "panels": [
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Response Time Percentiles (p50, p90, p95, p99)",
+          "description": "Response time percentiles estimated from histogram buckets, showing the distribution of latency",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 37 },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(http_server_requests_seconds_bucket{service=\"$service\", env=\"$env\", method=~\"$method\", uri!~\"/actuator.*\"}[5m])))",
+              "legendFormat": "p50"
+            },
+            {
+              "refId": "B",
+              "expr": "histogram_quantile(0.90, sum by (le) (rate(http_server_requests_seconds_bucket{service=\"$service\", env=\"$env\", method=~\"$method\", uri!~\"/actuator.*\"}[5m])))",
+              "legendFormat": "p90"
+            },
+            {
+              "refId": "C",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{service=\"$service\", env=\"$env\", method=~\"$method\", uri!~\"/actuator.*\"}[5m])))",
+              "legendFormat": "p95"
+            },
+            {
+              "refId": "D",
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{service=\"$service\", env=\"$env\", method=~\"$method\", uri!~\"/actuator.*\"}[5m])))",
+              "legendFormat": "p99"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "spanNulls": false,
+                "showPoints": "never",
+                "pointSize": 5,
+                "stacking": { "mode": "none", "group": "A" },
+                "axisPlacement": "auto",
+                "axisLabel": "",
+                "scaleDistribution": { "type": "linear" },
+                "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+                "thresholdsStyle": { "mode": "off" }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": { "id": "byName", "options": "p99" },
+                "properties": [
+                  { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "p95" },
+                "properties": [
+                  { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "p90" },
+                "properties": [
+                  { "id": "color", "value": { "mode": "fixed", "fixedColor": "yellow" } }
+                ]
+              },
+              {
+                "matcher": { "id": "byName", "options": "p50" },
+                "properties": [
+                  { "id": "color", "value": { "mode": "fixed", "fixedColor": "green" } }
+                ]
+              }
+            ]
+          },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }
+          }
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Request Rate by HTTP Method",
+          "description": "Request rate grouped by HTTP method (GET, POST, PUT, DELETE, etc.)",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 45 },
+          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (method) (rate(http_server_requests_seconds_count{service=\"$service\", env=\"$env\", uri!~\"/actuator.*\"}[5m]))",
+              "legendFormat": "{{method}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps",
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "drawStyle": "bars",
+                "lineInterpolation": "smooth",
+                "lineWidth": 1,
+                "fillOpacity": 50,
+                "gradientMode": "scheme",
+                "spanNulls": false,
+                "showPoints": "never",
+                "pointSize": 5,
+                "stacking": { "mode": "normal", "group": "A" },
+                "axisPlacement": "auto",
+                "axisLabel": "",
+                "scaleDistribution": { "type": "linear" },
+                "hideFrom": { "tooltip": false, "viz": false, "legend": false },
+                "thresholdsStyle": { "mode": "off" }
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "tooltip": { "mode": "multi", "sort": "desc" },
+            "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max", "lastNotNull"] }
+          }
+        }
+      ]
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Service Overview",
+      "url": "/d/eco-service-overview/ecossistema-service-overview",
+      "type": "link",
+      "icon": "apps",
+      "tooltip": "Jump to Service Overview dashboard"
+    },
+    {
+      "title": "JVM Metrics",
+      "url": "/d/eco-jvm-metrics/ecossistema-jvm-metrics",
+      "type": "link",
+      "icon": "bolt",
+      "tooltip": "Jump to JVM Metrics dashboard"
+    }
+  ]
+}

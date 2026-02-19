@@ -1,0 +1,287 @@
+# =============================================================================
+# Ecossistema Digital — Prometheus Alerting Rules
+# Covers: service health, JVM metrics, infrastructure, application-specific
+# =============================================================================
+
+groups:
+
+  # ===========================================================================
+  # Group: service_health
+  # Monitors backend availability, latency, and error rates.
+  # ===========================================================================
+  - name: service_health
+    rules:
+
+      # -----------------------------------------------------------------------
+      # ServiceDown — fires when any scrape target is unreachable for 1 minute.
+      # -----------------------------------------------------------------------
+      - alert: ServiceDown
+        expr: up{system="ecossistema"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.service }} is down ({{ $labels.env }})"
+          description: >-
+            The target {{ $labels.instance }} (job={{ $labels.job }},
+            service={{ $labels.service }}, env={{ $labels.env }}) has been
+            unreachable for more than 1 minute.
+
+      # -----------------------------------------------------------------------
+      # ServiceHighResponseTime — average response time exceeds 2 seconds.
+      # Uses Spring Boot Actuator metric http.server.requests exported by
+      # Micrometer as http_server_requests_seconds_*.
+      # -----------------------------------------------------------------------
+      - alert: ServiceHighResponseTime
+        expr: >-
+          (
+            rate(http_server_requests_seconds_sum{system="ecossistema"}[5m])
+            /
+            rate(http_server_requests_seconds_count{system="ecossistema"}[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time on {{ $labels.service }} ({{ $labels.env }})"
+          description: >-
+            The average HTTP response time on {{ $labels.instance }}
+            (service={{ $labels.service }}, env={{ $labels.env }},
+            uri={{ $labels.uri }}) has exceeded 2 seconds for the last
+            5 minutes. Current value: {{ $value | printf "%.2f" }}s.
+
+      # -----------------------------------------------------------------------
+      # ServiceHighErrorRate — 5xx error rate exceeds 5 % of total requests.
+      # -----------------------------------------------------------------------
+      - alert: ServiceHighErrorRate
+        expr: >-
+          (
+            sum by (instance, job, service, env) (
+              rate(http_server_requests_seconds_count{status=~"5..", system="ecossistema"}[5m])
+            )
+            /
+            sum by (instance, job, service, env) (
+              rate(http_server_requests_seconds_count{system="ecossistema"}[5m])
+            )
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate on {{ $labels.service }} ({{ $labels.env }})"
+          description: >-
+            More than 5 % of HTTP responses from {{ $labels.instance }}
+            (service={{ $labels.service }}, env={{ $labels.env }}) are
+            returning 5xx status codes over the last 5 minutes.
+            Current error rate: {{ $value | printf "%.2f" | humanizePercentage }}.
+
+  # ===========================================================================
+  # Group: jvm_metrics
+  # Monitors JVM heap usage and thread counts reported by Micrometer.
+  # ===========================================================================
+  - name: jvm_metrics
+    rules:
+
+      # -----------------------------------------------------------------------
+      # JvmHeapHigh — heap usage above 85 % for 5 minutes.
+      # -----------------------------------------------------------------------
+      - alert: JvmHeapHigh
+        expr: >-
+          (
+            jvm_memory_used_bytes{area="heap", system="ecossistema"}
+            /
+            jvm_memory_max_bytes{area="heap", system="ecossistema"}
+          ) > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JVM heap usage high on {{ $labels.service }} ({{ $labels.env }})"
+          description: >-
+            Heap memory on {{ $labels.instance }}
+            (service={{ $labels.service }}, env={{ $labels.env }}) has been
+            above 85 % for 5 minutes.
+            Current usage: {{ $value | printf "%.1f" | humanizePercentage }}.
+
+      # -----------------------------------------------------------------------
+      # JvmHeapCritical — heap usage above 95 % for 2 minutes.
+      # -----------------------------------------------------------------------
+      - alert: JvmHeapCritical
+        expr: >-
+          (
+            jvm_memory_used_bytes{area="heap", system="ecossistema"}
+            /
+            jvm_memory_max_bytes{area="heap", system="ecossistema"}
+          ) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "JVM heap critically high on {{ $labels.service }} ({{ $labels.env }})"
+          description: >-
+            Heap memory on {{ $labels.instance }}
+            (service={{ $labels.service }}, env={{ $labels.env }}) has
+            exceeded 95 % for 2 minutes. The service is at risk of
+            OutOfMemoryError. Immediate investigation required.
+            Current usage: {{ $value | printf "%.1f" | humanizePercentage }}.
+
+      # -----------------------------------------------------------------------
+      # JvmThreadsHigh — live thread count exceeds 200.
+      # -----------------------------------------------------------------------
+      - alert: JvmThreadsHigh
+        expr: jvm_threads_live_threads{system="ecossistema"} > 200
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High JVM thread count on {{ $labels.service }} ({{ $labels.env }})"
+          description: >-
+            The number of live JVM threads on {{ $labels.instance }}
+            (service={{ $labels.service }}, env={{ $labels.env }}) has
+            exceeded 200 for 5 minutes. Current count: {{ $value }}.
+            This may indicate a thread leak or excessive concurrency.
+
+  # ===========================================================================
+  # Group: infrastructure
+  # Monitors supporting infrastructure: PostgreSQL, Redis, RabbitMQ, disk.
+  # These alerts activate once the corresponding exporter jobs are added
+  # to the scrape_configs in prometheus.yml.
+  # ===========================================================================
+  - name: infrastructure
+    rules:
+
+      # -----------------------------------------------------------------------
+      # PostgresqlDown — PostgreSQL exporter target unreachable.
+      # Requires a job matching ".*postgres.*" in scrape_configs.
+      # -----------------------------------------------------------------------
+      - alert: PostgresqlDown
+        expr: up{job=~".*postgres.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL is down ({{ $labels.instance }})"
+          description: >-
+            The PostgreSQL exporter at {{ $labels.instance }}
+            (job={{ $labels.job }}) has been unreachable for more than
+            1 minute. Database-dependent services will be affected.
+
+      # -----------------------------------------------------------------------
+      # RedisDown — Redis exporter target unreachable.
+      # Requires a job matching ".*redis.*" in scrape_configs.
+      # -----------------------------------------------------------------------
+      - alert: RedisDown
+        expr: up{job=~".*redis.*"} == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis is down ({{ $labels.instance }})"
+          description: >-
+            The Redis exporter at {{ $labels.instance }}
+            (job={{ $labels.job }}) has been unreachable for more than
+            1 minute. Caching and session storage may be affected.
+
+      # -----------------------------------------------------------------------
+      # RabbitMQDown — RabbitMQ exporter target unreachable.
+      # Requires a job matching ".*rabbit.*" in scrape_configs.
+      # -----------------------------------------------------------------------
+      - alert: RabbitMQDown
+        expr: up{job=~".*rabbit.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "RabbitMQ is down ({{ $labels.instance }})"
+          description: >-
+            The RabbitMQ exporter at {{ $labels.instance }}
+            (job={{ $labels.job }}) has been unreachable for more than
+            1 minute. Message-driven services will be affected.
+
+      # -----------------------------------------------------------------------
+      # DiskSpaceWarning — less than 15 % free disk space.
+      # Requires node_exporter or a similar disk metrics source.
+      # -----------------------------------------------------------------------
+      - alert: DiskSpaceWarning
+        expr: >-
+          (
+            node_filesystem_avail_bytes{mountpoint="/", fstype!="tmpfs"}
+            /
+            node_filesystem_size_bytes{mountpoint="/", fstype!="tmpfs"}
+          ) < 0.15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space low on {{ $labels.instance }}"
+          description: >-
+            Less than 15 % disk space remaining on {{ $labels.instance }}
+            (mountpoint={{ $labels.mountpoint }}).
+            Free ratio: {{ $value | printf "%.2f" | humanizePercentage }}.
+
+      # -----------------------------------------------------------------------
+      # DiskSpaceCritical — less than 5 % free disk space.
+      # -----------------------------------------------------------------------
+      - alert: DiskSpaceCritical
+        expr: >-
+          (
+            node_filesystem_avail_bytes{mountpoint="/", fstype!="tmpfs"}
+            /
+            node_filesystem_size_bytes{mountpoint="/", fstype!="tmpfs"}
+          ) < 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space critically low on {{ $labels.instance }}"
+          description: >-
+            Less than 5 % disk space remaining on {{ $labels.instance }}
+            (mountpoint={{ $labels.mountpoint }}). Immediate action required
+            to prevent service outages.
+            Free ratio: {{ $value | printf "%.2f" | humanizePercentage }}.
+
+  # ===========================================================================
+  # Group: application_specific
+  # Custom alerts tied to GPJ/GOP business logic and operational metrics.
+  # These require the corresponding custom metrics to be exposed by the
+  # GPJ backend via Micrometer.
+  # ===========================================================================
+  - name: application_specific
+    rules:
+
+      # -----------------------------------------------------------------------
+      # HighConsecutiveFailures — GOP health checker reports repeated failures.
+      # Requires custom metric: gop_health_check_consecutive_failures
+      # exposed by the GPJ backend.
+      # -----------------------------------------------------------------------
+      - alert: HighConsecutiveFailures
+        expr: gop_health_check_consecutive_failures{system="ecossistema"} > 5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "GOP health checker consecutive failures on {{ $labels.service }} ({{ $labels.env }})"
+          description: >-
+            The GOP health checker on {{ $labels.instance }}
+            (service={{ $labels.service }}, env={{ $labels.env }}) has
+            reported more than 5 consecutive check failures over the last
+            2 minutes. Current count: {{ $value }}.
+            Investigate the target service connectivity.
+
+      # -----------------------------------------------------------------------
+      # TooManyActiveIncidents — more than 3 P1 (critical) incidents open.
+      # Requires custom metric: gop_active_incidents{priority="P1"}
+      # exposed by the GPJ backend.
+      # -----------------------------------------------------------------------
+      - alert: TooManyActiveIncidents
+        expr: gop_active_incidents{priority="P1", system="ecossistema"} > 3
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Too many active P1 incidents ({{ $labels.env }})"
+          description: >-
+            There are more than 3 active P1 (critical priority) incidents
+            in the GOP system on {{ $labels.instance }}
+            (env={{ $labels.env }}). Current count: {{ $value }}.
+            This requires immediate coordination and escalation.
