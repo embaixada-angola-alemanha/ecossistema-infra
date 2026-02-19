@@ -1,24 +1,57 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
   validate:
-    name: Validate Docker Compose
+    name: Validate Infrastructure
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Validate docker-compose syntax
         run: docker compose config --quiet
-
       - name: Check shell scripts
         run: |
           for f in scripts/*.sh; do
+            [ -f "$f" ] || continue
             bash -n "$f"
-            echo "✓ $f"
+            echo "✅ $f"
           done
+      - name: Lint Dockerfiles
+        run: |
+          for f in $(find . -name "Dockerfile*" -type f); do
+            echo "Checking $f..."
+            docker run --rm -i hadolint/hadolint < "$f" || true
+          done
+
+  conventional-commits:
+    name: Conventional Commits
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check commit messages
+        run: |
+          COMMITS=$(git log origin/${{ github.base_ref }}..HEAD --pretty=format:"%s")
+          PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+"
+          FAILED=0
+          while IFS= read -r msg; do
+            if [[ ! "$msg" =~ $PATTERN ]]; then
+              echo "❌ Non-conventional: $msg"
+              FAILED=1
+            fi
+          done <<< "$COMMITS"
+          if [ "$FAILED" -eq 1 ]; then
+            echo ""
+            echo "Commit messages must follow Conventional Commits:"
+            echo "  <type>(<scope>): <description>"
+            echo "  Types: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert"
+            exit 1
+          fi
+          echo "✅ All commits follow Conventional Commits"
