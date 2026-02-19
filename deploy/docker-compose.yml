@@ -1,0 +1,448 @@
+# =============================================================================
+# Ecossistema Digital — Embaixada de Angola na Alemanha
+# Docker Compose — Deployment Stack (Staging & Production)
+# =============================================================================
+#
+# Usage:
+#   Staging:    docker compose --env-file .env.staging up -d
+#   Production: docker compose --env-file .env.production up -d
+#
+# All ports and project names are parameterized via .env files so that
+# staging (10xxx) and production (20xxx) can coexist on the same host.
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL 16
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init/01-init-databases.sql:/docker-entrypoint-initdb.d/01-init-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
+  # Redis 7
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}-redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
+  # Keycloak (Identity & Access Management)
+  # ---------------------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: ${COMPOSE_PROJECT_NAME}-keycloak
+    restart: unless-stopped
+    command: ${KEYCLOAK_START_CMD} --import-realm
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+      KC_HTTP_RELATIVE_PATH: /
+      KC_HOSTNAME: ${KEYCLOAK_HOSTNAME}
+      KC_PROXY_HEADERS: xforwarded
+    ports:
+      - "${KEYCLOAK_PORT}:8080"
+    volumes:
+      - ../../ecossistema-infra/keycloak/realm-ecossistema.json:/opt/keycloak/data/import/realm-ecossistema.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200'"]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 45s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
+  # MinIO (Object Storage — S3-compatible)
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: ${COMPOSE_PROJECT_NAME}-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "${MINIO_API_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ (Message Broker)
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: ${COMPOSE_PROJECT_NAME}-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "${RABBITMQ_AMQP_PORT}:5672"
+      - "${RABBITMQ_MGMT_PORT}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecossistema-net
+
+  # ===========================================================================
+  # BACKEND SERVICES
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # SGC Backend (Sistema de Gestao Consular)
+  # ---------------------------------------------------------------------------
+  sgc-backend:
+    build:
+      context: ../../ecossistema-sgc-backend
+      dockerfile: Dockerfile
+    image: ${COMPOSE_PROJECT_NAME}/sgc-backend:${IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}-sgc-backend
+    restart: unless-stopped
+    ports:
+      - "${SGC_BACKEND_PORT}:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${ENV}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/sgc_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${KEYCLOAK_ISSUER}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      SERVER_PORT: 8081
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
+  # SI Backend (Site Institucional)
+  # ---------------------------------------------------------------------------
+  si-backend:
+    build:
+      context: ../../ecossistema-si-backend
+      dockerfile: Dockerfile
+    image: ${COMPOSE_PROJECT_NAME}/si-backend:${IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}-si-backend
+    restart: unless-stopped
+    ports:
+      - "${SI_BACKEND_PORT}:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${ENV}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/si_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${KEYCLOAK_ISSUER}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      SERVER_PORT: 8082
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
+  # WN Backend (WebNoticias)
+  # ---------------------------------------------------------------------------
+  wn-backend:
+    build:
+      context: ../../ecossistema-wn-backend
+      dockerfile: Dockerfile
+    image: ${COMPOSE_PROJECT_NAME}/wn-backend:${IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}-wn-backend
+    restart: unless-stopped
+    ports:
+      - "${WN_BACKEND_PORT}:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${ENV}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/wn_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${KEYCLOAK_ISSUER}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      SERVER_PORT: 8083
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
+  # GPJ Backend (Gestao de Projetos)
+  # ---------------------------------------------------------------------------
+  gpj-backend:
+    build:
+      context: ../../ecossistema-gpj-backend
+      dockerfile: Dockerfile
+    image: ${COMPOSE_PROJECT_NAME}/gpj-backend:${IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}-gpj-backend
+    restart: unless-stopped
+    ports:
+      - "${GPJ_BACKEND_PORT}:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${ENV}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gpj_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: ${KEYCLOAK_ISSUER}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      SERVER_PORT: 8084
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - ecossistema-net
+
+  # ===========================================================================
+  # FRONTEND SERVICES
+  # ===========================================================================
+
+  # ---------------------------------------------------------------------------
+  # SGC Frontend (Sistema de Gestao Consular)
+  # ---------------------------------------------------------------------------
+  sgc-frontend:
+    build:
+      context: ../../ecossistema-sgc-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${SGC_API_BASE_URL:-}
+        VITE_KEYCLOAK_URL: ${KEYCLOAK_EXTERNAL_URL:-}
+    image: ${COMPOSE_PROJECT_NAME}/sgc-frontend:${IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}-sgc-frontend
+    restart: unless-stopped
+    ports:
+      - "${SGC_FRONTEND_PORT}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
+  # SI Frontend (Site Institucional)
+  # ---------------------------------------------------------------------------
+  si-frontend:
+    build:
+      context: ../../ecossistema-si-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${SI_API_BASE_URL:-}
+        VITE_KEYCLOAK_URL: ${KEYCLOAK_EXTERNAL_URL:-}
+    image: ${COMPOSE_PROJECT_NAME}/si-frontend:${IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}-si-frontend
+    restart: unless-stopped
+    ports:
+      - "${SI_FRONTEND_PORT}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
+  # WN Frontend (WebNoticias)
+  # ---------------------------------------------------------------------------
+  wn-frontend:
+    build:
+      context: ../../ecossistema-wn-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${WN_API_BASE_URL:-}
+        VITE_KEYCLOAK_URL: ${KEYCLOAK_EXTERNAL_URL:-}
+    image: ${COMPOSE_PROJECT_NAME}/wn-frontend:${IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}-wn-frontend
+    restart: unless-stopped
+    ports:
+      - "${WN_FRONTEND_PORT}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecossistema-net
+
+  # ---------------------------------------------------------------------------
+  # GPJ Frontend (Gestao de Projetos)
+  # ---------------------------------------------------------------------------
+  gpj-frontend:
+    build:
+      context: ../../ecossistema-gpj-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${GPJ_API_BASE_URL:-}
+        VITE_KEYCLOAK_URL: ${KEYCLOAK_EXTERNAL_URL:-}
+    image: ${COMPOSE_PROJECT_NAME}/gpj-frontend:${IMAGE_TAG:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME}-gpj-frontend
+    restart: unless-stopped
+    ports:
+      - "${GPJ_FRONTEND_PORT}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecossistema-net
+
+# =============================================================================
+# Volumes
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  ecossistema-net:
+    driver: bridge

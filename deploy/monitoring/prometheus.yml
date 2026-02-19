@@ -1,0 +1,110 @@
+# =============================================================================
+# Ecossistema Digital — Prometheus Configuration
+# Scrapes Spring Boot Actuator /actuator/prometheus endpoints
+# for both staging (10xxx) and production (20xxx) environments.
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+# =============================================================================
+# Scrape Configurations
+# =============================================================================
+scrape_configs:
+
+  # ---------------------------------------------------------------------------
+  # Prometheus self-monitoring
+  # ---------------------------------------------------------------------------
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ===========================================================================
+  # STAGING BACKENDS (10xxx ports)
+  # ===========================================================================
+
+  - job_name: "stg-sgc-backend"
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["host.docker.internal:10081"]
+        labels:
+          env: staging
+          service: sgc-backend
+          system: ecossistema
+
+  - job_name: "stg-si-backend"
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["host.docker.internal:10082"]
+        labels:
+          env: staging
+          service: si-backend
+          system: ecossistema
+
+  - job_name: "stg-wn-backend"
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["host.docker.internal:10083"]
+        labels:
+          env: staging
+          service: wn-backend
+          system: ecossistema
+
+  - job_name: "stg-gpj-backend"
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["host.docker.internal:10084"]
+        labels:
+          env: staging
+          service: gpj-backend
+          system: ecossistema
+
+  # ===========================================================================
+  # PRODUCTION BACKENDS (20xxx ports)
+  # ===========================================================================
+
+  - job_name: "prod-sgc-backend"
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["host.docker.internal:20081"]
+        labels:
+          env: production
+          service: sgc-backend
+          system: ecossistema
+
+  - job_name: "prod-si-backend"
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["host.docker.internal:20082"]
+        labels:
+          env: production
+          service: si-backend
+          system: ecossistema
+
+  - job_name: "prod-wn-backend"
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["host.docker.internal:20083"]
+        labels:
+          env: production
+          service: wn-backend
+          system: ecossistema
+
+  - job_name: "prod-gpj-backend"
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["host.docker.internal:20084"]
+        labels:
+          env: production
+          service: gpj-backend
+          system: ecossistema
