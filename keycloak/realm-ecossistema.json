@@ -73,8 +73,8 @@
       "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:3001",
       "baseUrl": "/",
-      "redirectUris": ["http://localhost:3001/*"],
-      "webOrigins": ["http://localhost:3001"],
+      "redirectUris": ["http://localhost:3001/*", "https://stg-sgc.embaixada-angola.site/*", "https://sgc.embaixada-angola.site/*"],
+      "webOrigins": ["http://localhost:3001", "https://stg-sgc.embaixada-angola.site", "https://sgc.embaixada-angola.site"],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
@@ -97,8 +97,8 @@
       "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:3002",
       "baseUrl": "/",
-      "redirectUris": ["http://localhost:3002/*"],
-      "webOrigins": ["http://localhost:3002"],
+      "redirectUris": ["http://localhost:3002/*", "https://stg-si.embaixada-angola.site/*", "https://si.embaixada-angola.site/*"],
+      "webOrigins": ["http://localhost:3002", "https://stg-si.embaixada-angola.site", "https://si.embaixada-angola.site"],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
@@ -121,8 +121,8 @@
       "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:3003",
       "baseUrl": "/",
-      "redirectUris": ["http://localhost:3003/*"],
-      "webOrigins": ["http://localhost:3003"],
+      "redirectUris": ["http://localhost:3003/*", "https://stg-wn.embaixada-angola.site/*", "https://wn.embaixada-angola.site/*"],
+      "webOrigins": ["http://localhost:3003", "https://stg-wn.embaixada-angola.site", "https://wn.embaixada-angola.site"],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
@@ -145,8 +145,8 @@
       "directAccessGrantsEnabled": false,
       "rootUrl": "http://localhost:4200",
       "baseUrl": "/",
-      "redirectUris": ["http://localhost:4200/*", "http://localhost:3004/*"],
-      "webOrigins": ["http://localhost:4200", "http://localhost:3004"],
+      "redirectUris": ["http://localhost:4200/*", "http://localhost:3004/*", "https://stg-gpj.embaixada-angola.site/*", "https://gpj.embaixada-angola.site/*"],
+      "webOrigins": ["http://localhost:4200", "http://localhost:3004", "https://stg-gpj.embaixada-angola.site", "https://gpj.embaixada-angola.site"],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }

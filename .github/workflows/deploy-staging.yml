@@ -1,0 +1,61 @@
+name: Deploy Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: 'Repository that triggered the deploy'
+        required: false
+        default: 'manual'
+  repository_dispatch:
+    types: [deploy-staging]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Log trigger source
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "Triggered by: ${{ github.event.client_payload.source_repo }}"
+            echo "Commit: ${{ github.event.client_payload.sha }}"
+          else
+            echo "Triggered by: ${{ github.event.inputs.source_repo || 'manual' }}"
+          fi
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script_stop: true
+          command_timeout: 15m
+          script: |
+            echo "=== Staging deploy started at $(date) ==="
+            cd /opt/ecossistema/repos/ecossistema-infra/deploy
+            ./scripts/deploy.sh staging --pull --build
+            echo "=== Staging deploy finished at $(date) ==="
+
+      - name: Verify services
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/ecossistema/repos/ecossistema-infra/deploy
+            UNHEALTHY=$(docker compose --env-file .env.staging ps --format json | jq -r 'select(.Health == "unhealthy") | .Name' 2>/dev/null | wc -l)
+            if [ "$UNHEALTHY" -gt 0 ]; then
+              echo "WARNING: $UNHEALTHY unhealthy services detected"
+              docker compose --env-file .env.staging ps
+              exit 1
+            fi
+            echo "All services healthy"
+            docker compose --env-file .env.staging ps --format "table {{.Name}}\t{{.Status}}"

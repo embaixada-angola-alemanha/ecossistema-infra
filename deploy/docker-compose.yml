@@ -343,8 +343,7 @@ services:
       context: ../../ecossistema-sgc-frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${SGC_API_BASE_URL:-}
-        VITE_KEYCLOAK_URL: ${KEYCLOAK_EXTERNAL_URL:-}
+        BUILD_CONFIG: ${ENV:-production}
     image: ${COMPOSE_PROJECT_NAME}/sgc-frontend:${IMAGE_TAG:-latest}
     container_name: ${COMPOSE_PROJECT_NAME}-sgc-frontend
     restart: unless-stopped
@@ -366,8 +365,7 @@ services:
       context: ../../ecossistema-si-frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${SI_API_BASE_URL:-}
-        VITE_KEYCLOAK_URL: ${KEYCLOAK_EXTERNAL_URL:-}
+        BUILD_CONFIG: ${ENV:-production}
     image: ${COMPOSE_PROJECT_NAME}/si-frontend:${IMAGE_TAG:-latest}
     container_name: ${COMPOSE_PROJECT_NAME}-si-frontend
     restart: unless-stopped
@@ -389,8 +387,7 @@ services:
       context: ../../ecossistema-wn-frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${WN_API_BASE_URL:-}
-        VITE_KEYCLOAK_URL: ${KEYCLOAK_EXTERNAL_URL:-}
+        BUILD_CONFIG: ${ENV:-production}
     image: ${COMPOSE_PROJECT_NAME}/wn-frontend:${IMAGE_TAG:-latest}
     container_name: ${COMPOSE_PROJECT_NAME}-wn-frontend
     restart: unless-stopped
@@ -412,8 +409,7 @@ services:
       context: ../../ecossistema-gpj-frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${GPJ_API_BASE_URL:-}
-        VITE_KEYCLOAK_URL: ${KEYCLOAK_EXTERNAL_URL:-}
+        BUILD_CONFIG: ${ENV:-production}
     image: ${COMPOSE_PROJECT_NAME}/gpj-frontend:${IMAGE_TAG:-latest}
     container_name: ${COMPOSE_PROJECT_NAME}-gpj-frontend
     restart: unless-stopped
