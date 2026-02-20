@@ -42,6 +42,20 @@ jobs:
           event-type: deploy-staging
           client-payload: '{"source_repo": "${{ github.event.repository.name }}", "sha": "${{ github.sha }}"}'
 
+  deploy-production:
+    name: Trigger Production Deploy
+    runs-on: ubuntu-latest
+    needs: validate
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Trigger deploy
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DEPLOY_PAT }}
+          repository: embaixada-angola-alemanha/ecossistema-infra
+          event-type: deploy-production
+          client-payload: '{"source_repo": "${{ github.event.repository.name }}", "sha": "${{ github.sha }}"}'
+
   conventional-commits:
     name: Conventional Commits
     runs-on: ubuntu-latest

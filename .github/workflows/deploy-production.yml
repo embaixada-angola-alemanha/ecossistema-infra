@@ -1,0 +1,61 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: 'Repository that triggered the deploy'
+        required: false
+        default: 'manual'
+  repository_dispatch:
+    types: [deploy-production]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Log trigger source
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            echo "Triggered by: ${{ github.event.client_payload.source_repo }}"
+            echo "Commit: ${{ github.event.client_payload.sha }}"
+          else
+            echo "Triggered by: ${{ github.event.inputs.source_repo || 'manual' }}"
+          fi
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script_stop: true
+          command_timeout: 15m
+          script: |
+            echo "=== Production deploy started at $(date) ==="
+            cd /opt/ecossistema/repos/ecossistema-infra/deploy
+            ./scripts/deploy.sh production --pull --build
+            echo "=== Production deploy finished at $(date) ==="
+
+      - name: Verify services
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd /opt/ecossistema/repos/ecossistema-infra/deploy
+            UNHEALTHY=$(docker compose --env-file .env.production ps --format json | jq -r 'select(.Health == "unhealthy") | .Name' 2>/dev/null | wc -l)
+            if [ "$UNHEALTHY" -gt 0 ]; then
+              echo "WARNING: $UNHEALTHY unhealthy services detected"
+              docker compose --env-file .env.production ps
+              exit 1
+            fi
+            echo "All services healthy"
+            docker compose --env-file .env.production ps --format "table {{.Name}}\t{{.Status}}"
